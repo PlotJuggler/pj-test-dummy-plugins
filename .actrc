@@ -9,3 +9,11 @@
 # Windows: act cannot run Windows containers on Linux,
 # so a Linux image is used to validate the workflow logic
 -P windows-latest=catthehacker/ubuntu:act-latest
+
+# macOS: act cannot run macOS containers on Linux,
+# so a Linux image is used to validate the workflow logic
+-P macos-13=catthehacker/ubuntu:act-latest
+-P macos-14=catthehacker/ubuntu:act-latest
+
+# Windows ARM64: same approach as Windows x64 and macOS
+-P windows-11-arm=catthehacker/ubuntu:act-latest
