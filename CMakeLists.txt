@@ -11,6 +11,9 @@ enable_testing()
 
 option(BUILD_TESTS "Build plugin tests" ON)
 
-add_subdirectory(plugins/example-streamer)
-add_subdirectory(plugins/custom-toolbox)
-add_subdirectory(plugins/example-data-loader)
+add_subdirectory(plugins/csv-loader)
+add_subdirectory(plugins/ros2-streaming)
+add_subdirectory(plugins/mcap-loader)
+add_subdirectory(plugins/fft-toolbox)
+add_subdirectory(plugins/can-bus-parser)
+add_subdirectory(plugins/ros-bundle)
