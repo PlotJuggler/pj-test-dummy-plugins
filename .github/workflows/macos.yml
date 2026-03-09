@@ -61,20 +61,20 @@ jobs:
           mkdir -p dist
           find build/Release -name "*.dylib" -exec cp {} dist/ \; 2>/dev/null || true
           ls -la dist/
-          tar -czf pj-test-dummy-plugins-${{ github.ref_name }}-macos-${{ matrix.arch }}.tar.gz -C dist .
+          cd dist && zip -r ../pj-test-dummy-plugins-${{ github.ref_name }}-macos-${{ matrix.arch }}.zip .
 
       - name: Upload artifact
         if: startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v4
         with:
           name: pj-test-dummy-plugins-${{ github.ref_name }}-macos-${{ matrix.arch }}
-          path: pj-test-dummy-plugins-${{ github.ref_name }}-macos-${{ matrix.arch }}.tar.gz
+          path: pj-test-dummy-plugins-${{ github.ref_name }}-macos-${{ matrix.arch }}.zip
 
       - name: Upload to Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: pj-test-dummy-plugins-${{ github.ref_name }}-macos-${{ matrix.arch }}.tar.gz
+          files: pj-test-dummy-plugins-${{ github.ref_name }}-macos-${{ matrix.arch }}.zip
           generate_release_notes: false
           fail_on_unmatched_files: false
         env:
