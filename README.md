@@ -91,7 +91,7 @@ git tag csv-loader/v1.0.0
 git push origin csv-loader/v1.0.0
 ```
 
-All three workflows (ubuntu, macos, windows) run in parallel. Each builds the full project but packages **only the tagged extension**. The six resulting zips are attached to a single GitHub Release:
+The unified workflow runs all 6 matrix jobs in parallel (linux x86_64, linux aarch64, macos x86_64, macos arm64, windows x64, windows arm64). Each builds the full project but packages **only the tagged extension**. The six resulting zips are attached to a single GitHub Release:
 
 ```
 csv-loader-1.0.0-linux-x86_64.zip
@@ -116,9 +116,7 @@ pj-test-dummy-plugins/
 │   ├── linux-x86_64/Dockerfile.build   # builds x86_64 inside Docker (GitLab CI)
 │   └── linux-aarch64/Dockerfile.build  # builds aarch64 via buildx + QEMU (GitLab CI)
 ├── .github/workflows/
-│   ├── ubuntu.yml                   # matrix: ubuntu-22.04 (x86_64) + ubuntu-22.04-arm (aarch64)
-│   ├── windows.yml                  # matrix: windows-latest (x64) + windows-11-arm (arm64)
-│   └── macos.yml                    # matrix: macos-13 (x86_64) + macos-14 (arm64)
+│   └── build.yml                    # unified matrix: 6 jobs (linux x86_64/aarch64, macos x86_64/arm64, windows x64/arm64)
 └── extensions/
     ├── csv-loader/                  # CsvLoader extension + GTest suite
     ├── ros2-streaming/              # Ros2Streaming extension + GTest suite
