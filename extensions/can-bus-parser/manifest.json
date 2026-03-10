@@ -1,0 +1,8 @@
+{
+  "id": "can-bus-parser",
+  "name": "CAN Bus Parser",
+  "description": "Loads a DBC file and parses CAN frames into signal maps",
+  "version": "1.0.0",
+  "category": "parser",
+  "min_plotjuggler_version": "4.0.0"
+}
