@@ -1,6 +1,6 @@
 # pj-test-dummy-plugins
 
-Six dummy C++ extensions (shared libraries) for the PlotJuggler Marketplace POC, with a complete CI/CD pipeline using **pixi** + **conan 2.0** and GitHub Actions workflows for Ubuntu (x86_64 + aarch64), Windows (x64 + arm64), and macOS (x86_64 + arm64).
+Six dummy C++ extensions (shared libraries) for the PlotJuggler Marketplace POC, with a complete CI/CD pipeline using **conan 2.0** and GitHub Actions workflows for Ubuntu (x86_64 + aarch64), Windows (x64 + arm64), and macOS (x86_64 + arm64).
 
 This repository covers the **dummy extensions** deliverable of **Week 1** of the PlotJuggler Marketplace implementation plan (5–11 March 2026). See [ARCHITECTURE.md §7.2](../plotjuggler_core/pj_marketplace/documentation/ARCHITECTURE.md) and [PLAN.md §4](../plotjuggler_core/pj_marketplace/documentation/PLAN.md) for full context.
 
@@ -71,13 +71,18 @@ Six zips are produced per release tag (one per platform/arch combination).
 
 ## Requirements
 
-- [pixi](https://pixi.sh) — manages the toolchain (cmake, ninja, conan, ccache, gcc/clang)
+- Python + pip
+- A C++ compiler: gcc/g++ on Linux, clang on macOS, MSVC on Windows
 
 ## Build locally
 
 ```bash
-pixi run all      # conan install → cmake configure → build → ctest
-pixi run clean    # remove build/
+pip install cmake "conan>=2.0,<3"
+conan profile detect --force
+conan install . --output-folder=build --build=missing -s build_type=Release
+cmake -S . -B build/Release -DCMAKE_TOOLCHAIN_FILE=build/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
+cmake --build build/Release --config Release
+ctest --test-dir build/Release -V --output-on-failure
 ```
 
 ---
@@ -110,8 +115,6 @@ csv-loader-1.0.0-windows-arm64.zip
 pj-test-dummy-plugins/
 ├── CMakeLists.txt                   # root, includes all 6 extensions
 ├── conanfile.py                     # C++ dependency: gtest/1.14.0
-├── pixi.toml                        # toolchain + tasks (linux, windows, macos)
-├── pixi.lock                        # locked environment for linux platforms
 ├── docker/
 │   ├── linux-x86_64/Dockerfile.build   # builds x86_64 inside Docker (GitLab CI)
 │   └── linux-aarch64/Dockerfile.build  # builds aarch64 via buildx + QEMU (GitLab CI)

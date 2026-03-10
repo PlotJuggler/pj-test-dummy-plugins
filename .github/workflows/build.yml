@@ -48,22 +48,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # pixi manages the full toolchain (cmake, ninja, conan, ccache) on all
-      # platforms except windows-11-arm: conda-forge does not ship cmake,
-      # conan or ccache for win-arm64. The runner provides cmake 3.31 and
-      # Python/pip pre-installed, which is used instead for that job.
-      - name: Setup pixi
-        if: matrix.runner != 'windows-11-arm'
-        uses: prefix-dev/setup-pixi@v0.8.1
-        with:
-          pixi-version: latest
-          cache: true
-          locked: false
-          cache-write: ${{ github.event_name != 'pull_request' }}
-
-      - name: Install conan (windows-arm64)
-        if: matrix.runner == 'windows-11-arm'
-        run: pip install "conan>=2.0,<3"
+      # cmake and conan installed via pip — available on all 6 runners.
+      # Compilers are provided by each runner image (gcc/clang/MSVC).
+      - name: Install cmake and conan
+        run: pip install cmake "conan>=2.0,<3"
 
       - name: Cache conan packages (Linux/macOS)
         if: runner.os != 'Windows'
@@ -81,31 +69,7 @@ jobs:
           key: conan-${{ matrix.os_label }}-${{ matrix.arch }}-${{ hashFiles('conanfile.py') }}
           restore-keys: conan-${{ matrix.os_label }}-${{ matrix.arch }}-
 
-      - name: Cache ccache (Linux/macOS)
-        if: runner.os != 'Windows'
-        uses: actions/cache@v4
-        with:
-          path: ~/.ccache
-          key: ccache-${{ matrix.os_label }}-${{ matrix.arch }}-${{ github.sha }}
-          restore-keys: ccache-${{ matrix.os_label }}-${{ matrix.arch }}-
-
-      - name: Cache ccache (Windows x64)
-        if: matrix.runner == 'windows-latest'
-        uses: actions/cache@v4
-        with:
-          path: ~\AppData\Local\ccache
-          key: ccache-windows-x64-${{ github.sha }}
-          restore-keys: ccache-windows-x64-
-
-      - name: Build & Test (pixi)
-        if: matrix.runner != 'windows-11-arm'
-        run: pixi run all
-
-      # windows-11-arm: cmake 3.31 and MSVC are pre-installed on the runner.
-      # conan is installed via pip above. ccache is not available for win-arm64
-      # on conda-forge, so it is omitted for this platform.
-      - name: Build & Test (windows-arm64)
-        if: matrix.runner == 'windows-11-arm'
+      - name: Build & Test
         shell: bash
         run: |
           conan profile detect --force
