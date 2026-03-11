@@ -115,9 +115,6 @@ csv-loader-1.0.0-windows-arm64.zip
 pj-test-dummy-plugins/
 ├── CMakeLists.txt                   # root, includes all 6 extensions
 ├── conanfile.py                     # C++ dependency: gtest/1.14.0
-├── docker/
-│   ├── linux-x86_64/Dockerfile.build   # builds x86_64 inside Docker (GitLab CI)
-│   └── linux-aarch64/Dockerfile.build  # builds aarch64 via buildx + QEMU (GitLab CI)
 ├── .github/workflows/
 │   └── build.yml                    # unified matrix: 6 jobs (linux x86_64/aarch64, macos x86_64/arm64, windows x64/arm64)
 └── extensions/
