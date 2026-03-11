@@ -1,5 +1,7 @@
 # pj-test-dummy-plugins
 
+> **Note:** This repository is a work in progress and is used internally for testing the PlotJuggler Marketplace infrastructure.
+
 Six dummy C++ extensions (shared libraries) for the PlotJuggler Marketplace POC, with a complete CI/CD pipeline using **conan 2.0** and GitHub Actions workflows for Ubuntu (x86_64 + aarch64), Windows (x64 + arm64), and macOS (x86_64 + arm64).
 
 This repository covers the **dummy extensions** deliverable of **Week 1** of the PlotJuggler Marketplace implementation plan (5–11 March 2026). See [ARCHITECTURE.md §7.2](../plotjuggler_core/pj_marketplace/documentation/ARCHITECTURE.md) and [PLAN.md §4](../plotjuggler_core/pj_marketplace/documentation/PLAN.md) for full context.
