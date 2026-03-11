@@ -1,0 +1,8 @@
+{
+  "id": "fft-toolbox",
+  "name": "FFT Toolbox",
+  "description": "Computes FFT over sample vectors with configurable window functions",
+  "version": "1.0.0",
+  "category": "toolbox",
+  "min_plotjuggler_version": "4.0.0"
+}
