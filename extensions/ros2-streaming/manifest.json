@@ -2,7 +2,7 @@
   "id": "ros2-streaming",
   "name": "ROS 2 Streaming",
   "description": "Connects to a ROS 2 host and lists available topics",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "category": "data_streamer",
   "min_plotjuggler_version": "4.0.0"
 }
