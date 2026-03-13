@@ -2,7 +2,7 @@
   "id": "mcap-loader",
   "name": "MCAP Loader",
   "description": "Opens MCAP files and lists available channels",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "category": "data_loader",
   "min_plotjuggler_version": "4.0.0"
 }
