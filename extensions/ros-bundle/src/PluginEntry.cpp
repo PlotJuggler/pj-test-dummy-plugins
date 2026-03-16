@@ -6,7 +6,7 @@ PluginSystem::RosBundle* createRosBundle() {
     return new PluginSystem::RosBundle();
 }
 
-const char* getMetadata() {
+const char* getPluginMetadata() {
     return R"({
         "id": "ros-bundle",
         "name": "ROS Bundle",

@@ -6,7 +6,7 @@ PluginSystem::Ros2Streaming* createRos2Streaming() {
     return new PluginSystem::Ros2Streaming();
 }
 
-const char* getMetadata() {
+const char* getPluginMetadata() {
     return R"({
         "id": "ros2-streaming",
         "name": "ROS 2 Streaming",

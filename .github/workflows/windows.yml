@@ -1,0 +1,115 @@
+name: windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+  pull_request:
+    types: [opened, synchronize]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            arch: x64
+          - os: windows-11-arm
+            arch: arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # x64: full toolchain via pixi (cmake, ninja, conan, ccache)
+      - name: Setup pixi
+        if: matrix.arch == 'x64'
+        uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          pixi-version: latest
+          cache: true
+          locked: false
+          cache-write: ${{ github.event_name != 'pull_request' }}
+
+      # arm64: conda-forge does not ship cmake/ninja for win-arm64,
+      # so we rely on MSVC + cmake pre-installed on the runner and install conan via pip
+      - name: Install conan (arm64)
+        if: matrix.arch == 'arm64'
+        run: pip install conan
+
+      - name: Cache conan packages
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\conan\p
+          key: conan-windows-${{ matrix.arch }}-${{ hashFiles('conanfile.py') }}
+          restore-keys: conan-windows-${{ matrix.arch }}-
+
+      - name: Cache ccache
+        if: matrix.arch == 'x64'
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\ccache
+          key: ccache-windows-x64-${{ github.sha }}
+          restore-keys: ccache-windows-x64-
+
+      - name: Build & Test (x64 via pixi)
+        if: matrix.arch == 'x64'
+        run: pixi run all
+
+      - name: Build & Test (arm64 native)
+        if: matrix.arch == 'arm64'
+        shell: bash
+        run: |
+          conan profile detect --force
+          conan install . --output-folder=build --build=missing -s build_type=Release
+          cmake -S . -B build/Release \
+            -DCMAKE_TOOLCHAIN_FILE=build/conan_toolchain.cmake \
+            -DCMAKE_PREFIX_PATH=build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTS=ON
+          cmake --build build/Release --config Release
+          ctest --test-dir build/Release -V --output-on-failure
+
+      - name: Package artifacts
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          mkdir -p dist
+          for ext_dir in extensions/*/; do
+            name=$(basename "$ext_dir")
+            mkdir -p "dist/$name"
+            find build/Release -name "${name}.dll" -exec cp {} "dist/$name/" \; 2>/dev/null || true
+            cp "${ext_dir}manifest.json" "dist/$name/" 2>/dev/null || true
+          done
+          ls -la dist/*/
+
+      - name: Compress artifacts
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist\* -DestinationPath "pj-test-dummy-plugins-${{ github.ref_name }}-windows-${{ matrix.arch }}.zip"
+          Write-Host "Package created: pj-test-dummy-plugins-${{ github.ref_name }}-windows-${{ matrix.arch }}.zip"
+
+      - name: Upload artifact
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: pj-test-dummy-plugins-${{ github.ref_name }}-windows-${{ matrix.arch }}
+          path: pj-test-dummy-plugins-${{ github.ref_name }}-windows-${{ matrix.arch }}.zip
+
+      - name: Upload to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: pj-test-dummy-plugins-${{ github.ref_name }}-windows-${{ matrix.arch }}.zip
+          generate_release_notes: false
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

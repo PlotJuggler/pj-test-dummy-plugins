@@ -1,0 +1,157 @@
+stages:
+  - build
+  - release
+
+# Run pipeline on: branch pushes, merge requests, and tags.
+# Avoids duplicate pipelines when a branch has an open MR (branch pipeline is skipped,
+# MR pipeline takes over).
+workflow:
+  rules:
+    - if: $CI_COMMIT_TAG                        # tag → full pipeline (build + release)
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"  # MR opened/updated → build only
+    - if: $CI_COMMIT_BRANCH                     # branch push (no open MR) → build only
+
+variables:
+  BUILD_TYPE: Release
+
+# ─── Linux x86_64 ─────────────────────────────────────────────────────────────
+# Runner: #33 (CocoSet) — tags: self-hosted, linux, amd64
+# Shell executor. Builds inside a Docker container via docker build + extract.
+build-linux-x86_64:
+  stage: build
+  tags:
+    - self-hosted
+    - linux
+    - amd64
+  script:
+    - docker build --load -t pj-plugins-x86_64:${CI_COMMIT_SHORT_SHA} -f docker/linux-x86_64/Dockerfile.build .
+    - docker create --name extract-x86_64 pj-plugins-x86_64:${CI_COMMIT_SHORT_SHA}
+    - mkdir -p dist-x86_64
+    - docker cp extract-x86_64:/workspace/dist/. ./dist-x86_64/
+    - docker rm extract-x86_64
+    - docker rmi pj-plugins-x86_64:${CI_COMMIT_SHORT_SHA} || true
+    - VERSION="${CI_COMMIT_TAG:-${CI_COMMIT_SHORT_SHA}}"
+    - cd dist-x86_64 && zip -r "../pj-test-dummy-plugins-${VERSION}-linux-x86_64.zip" . && cd ..
+    - |
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+             --upload-file "pj-test-dummy-plugins-${CI_COMMIT_TAG}-linux-x86_64.zip" \
+             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/pj-test-dummy-plugins/${CI_COMMIT_TAG}/pj-test-dummy-plugins-${CI_COMMIT_TAG}-linux-x86_64.zip"
+      fi
+  artifacts:
+    paths:
+      - "pj-test-dummy-plugins-*-linux-x86_64.zip"
+    expire_in: 1 week
+  interruptible: true
+
+# ─── Linux aarch64 ────────────────────────────────────────────────────────────
+# Runner: #33 (CocoSet) — same amd64 runner, cross-compiles via docker buildx + QEMU.
+# docker/linux-aarch64/Dockerfile.build compiles the full project inside the container.
+build-linux-aarch64:
+  stage: build
+  tags:
+    - self-hosted
+    - linux
+    - amd64
+  script:
+    - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+    - docker buildx build --platform linux/arm64 --load -t pj-plugins-aarch64:${CI_COMMIT_SHORT_SHA} -f docker/linux-aarch64/Dockerfile.build .
+    - docker create --name extract-aarch64 pj-plugins-aarch64:${CI_COMMIT_SHORT_SHA}
+    - mkdir -p dist-aarch64
+    - docker cp extract-aarch64:/workspace/dist/. ./dist-aarch64/
+    - docker rm extract-aarch64
+    - docker rmi pj-plugins-aarch64:${CI_COMMIT_SHORT_SHA} || true
+    - VERSION="${CI_COMMIT_TAG:-${CI_COMMIT_SHORT_SHA}}"
+    - cd dist-aarch64 && zip -r "../pj-test-dummy-plugins-${VERSION}-linux-aarch64.zip" . && cd ..
+    - |
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+             --upload-file "pj-test-dummy-plugins-${CI_COMMIT_TAG}-linux-aarch64.zip" \
+             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/pj-test-dummy-plugins/${CI_COMMIT_TAG}/pj-test-dummy-plugins-${CI_COMMIT_TAG}-linux-aarch64.zip"
+      fi
+  artifacts:
+    paths:
+      - "pj-test-dummy-plugins-*-linux-aarch64.zip"
+    expire_in: 1 week
+  interruptible: true
+
+# ─── Windows x64 ──────────────────────────────────────────────────────────────
+# Runner: #26 (PC portatil jlinigo) — tag: win64
+# Shell executor (PowerShell). Requires cmake + MSVC + pip pre-installed on the machine.
+build-windows-x64:
+  stage: build
+  tags:
+    - win64
+  script:
+    - |
+      $ErrorActionPreference = "Stop"
+      # Add cmake to PATH (bundled with Visual Studio 2022)
+      $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+      $vsInstallPath = & $vswhere -latest -property installationPath
+      $cmakePath = "$vsInstallPath\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
+      $env:PATH = "$cmakePath;$env:PATH"
+      pip install "conan>=2.0,<3"
+      conan profile detect --force
+      conan install . --output-folder=build --build=missing -s build_type=Release
+      cmake -S . -B build/Release -DCMAKE_TOOLCHAIN_FILE=build/conan_toolchain.cmake -DCMAKE_PREFIX_PATH=build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
+      cmake --build build/Release --config Release
+      ctest --test-dir build/Release -V --output-on-failure -C Release
+      foreach ($ext_dir in Get-ChildItem -Path extensions -Directory) {
+        $name = $ext_dir.Name
+        New-Item -ItemType Directory -Force -Path "dist\$name" | Out-Null
+        Get-ChildItem -Path build/Release -Recurse -Filter "${name}.dll" | ForEach-Object { Copy-Item $_.FullName -Destination "dist\$name\" }
+        $manifest = "extensions\$name\manifest.json"
+        if (Test-Path $manifest) { Copy-Item $manifest -Destination "dist\$name\" }
+      }
+      $zipName = "pj-test-dummy-plugins-" + $(if ($env:CI_COMMIT_TAG) { $env:CI_COMMIT_TAG } else { $env:CI_COMMIT_SHORT_SHA }) + "-windows-x64.zip"
+      Compress-Archive -Path dist\* -DestinationPath $zipName -Force
+      if ($env:CI_COMMIT_TAG) {
+        $headers = @{ "JOB-TOKEN" = $env:CI_JOB_TOKEN }
+        $uri = "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/packages/generic/pj-test-dummy-plugins/$env:CI_COMMIT_TAG/pj-test-dummy-plugins-$env:CI_COMMIT_TAG-windows-x64.zip"
+        Invoke-RestMethod -Method PUT -Headers $headers -InFile $zipName -Uri $uri
+      }
+  artifacts:
+    paths:
+      - "pj-test-dummy-plugins-*-windows-x64.zip"
+    expire_in: 1 week
+  interruptible: true
+
+# ─── Release ──────────────────────────────────────────────────────────────────
+# Creates a GitLab Release with links to the Package Registry via curl API.
+# No release-cli image needed — works with shell executor.
+# Only runs on version tags (e.g. 1.0.0, v1.2.3).
+# aarch64 and windows are optional — release is created even if they failed.
+release:
+  stage: release
+  tags:
+    - self-hosted
+    - linux
+    - amd64
+  rules:
+    - if: $CI_COMMIT_TAG
+  needs:
+    - job: build-linux-x86_64
+      optional: false
+    - job: build-linux-aarch64
+      optional: true
+    - job: build-windows-x64
+      optional: true
+  script:
+    - |
+      PKG_URL="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/pj-test-dummy-plugins/${CI_COMMIT_TAG}"
+      curl --fail --request POST \
+           --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+           --header "Content-Type: application/json" \
+           --data "{
+             \"name\": \"Release ${CI_COMMIT_TAG}\",
+             \"tag_name\": \"${CI_COMMIT_TAG}\",
+             \"description\": \"Automated release for version ${CI_COMMIT_TAG}.\",
+             \"assets\": {
+               \"links\": [
+                 {\"name\": \"pj-test-dummy-plugins-${CI_COMMIT_TAG}-linux-x86_64.zip\", \"url\": \"${PKG_URL}/pj-test-dummy-plugins-${CI_COMMIT_TAG}-linux-x86_64.zip\", \"link_type\": \"package\"},
+                 {\"name\": \"pj-test-dummy-plugins-${CI_COMMIT_TAG}-linux-aarch64.zip\", \"url\": \"${PKG_URL}/pj-test-dummy-plugins-${CI_COMMIT_TAG}-linux-aarch64.zip\", \"link_type\": \"package\"},
+                 {\"name\": \"pj-test-dummy-plugins-${CI_COMMIT_TAG}-windows-x64.zip\", \"url\": \"${PKG_URL}/pj-test-dummy-plugins-${CI_COMMIT_TAG}-windows-x64.zip\", \"link_type\": \"package\"}
+               ]
+             }
+           }" \
+           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases"

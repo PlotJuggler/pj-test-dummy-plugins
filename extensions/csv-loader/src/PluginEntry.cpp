@@ -6,7 +6,7 @@ PluginSystem::CsvLoader* createCsvLoader() {
     return new PluginSystem::CsvLoader();
 }
 
-const char* getMetadata() {
+const char* getPluginMetadata() {
     return R"({
         "id": "csv-loader",
         "name": "CSV Loader",

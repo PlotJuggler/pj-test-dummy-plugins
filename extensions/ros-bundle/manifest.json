@@ -2,7 +2,7 @@
   "id": "ros-bundle",
   "name": "ROS Bundle",
   "description": "Meta-extension that groups ROS-related plugins and reports availability",
-  "version": "1.0.8",
+  "version": "1.0.0",
   "category": "toolbox",
   "min_plotjuggler_version": "4.0.0"
 }

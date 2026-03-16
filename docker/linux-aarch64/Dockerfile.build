@@ -1,0 +1,36 @@
+FROM arm64v8/ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+RUN apt-get update && apt-get install -y \
+    cmake \
+    ninja-build \
+    g++ \
+    python3-pip \
+    zip \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --no-cache-dir "conan>=2.0,<3"
+
+WORKDIR /workspace
+COPY . .
+
+RUN conan profile detect --force && \
+    conan install . --output-folder=build --build=missing -s build_type=Release && \
+    cmake -S . -B build/Release \
+        -DCMAKE_TOOLCHAIN_FILE=build/conan_toolchain.cmake \
+        -DCMAKE_PREFIX_PATH=build \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_TESTS=ON \
+        -GNinja && \
+    cmake --build build/Release && \
+    ctest --test-dir build/Release -V --output-on-failure && \
+    for ext_dir in extensions/*/; do \
+        name=$(basename "$ext_dir"); \
+        mkdir -p "dist/$name"; \
+        find build/Release -name "${name}.so" -exec cp {} "dist/$name/" \; 2>/dev/null || true; \
+        cp "${ext_dir}manifest.json" "dist/$name/" 2>/dev/null || true; \
+    done

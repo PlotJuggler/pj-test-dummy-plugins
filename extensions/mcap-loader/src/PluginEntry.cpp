@@ -6,7 +6,7 @@ PluginSystem::McapLoader* createMcapLoader() {
     return new PluginSystem::McapLoader();
 }
 
-const char* getMetadata() {
+const char* getPluginMetadata() {
     return R"({
         "id": "mcap-loader",
         "name": "MCAP Loader",

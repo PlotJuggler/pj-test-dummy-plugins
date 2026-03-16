@@ -6,7 +6,7 @@ PluginSystem::CanBusParser* createCanBusParser() {
     return new PluginSystem::CanBusParser();
 }
 
-const char* getMetadata() {
+const char* getPluginMetadata() {
     return R"({
         "id": "can-bus-parser",
         "name": "CAN Bus Parser",

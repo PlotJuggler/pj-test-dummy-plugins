@@ -6,7 +6,7 @@ PluginSystem::FftToolbox* createFftToolbox() {
     return new PluginSystem::FftToolbox();
 }
 
-const char* getMetadata() {
+const char* getPluginMetadata() {
     return R"({
         "id": "fft-toolbox",
         "name": "FFT Toolbox",

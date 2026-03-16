@@ -1,8 +1,6 @@
 # pj-test-dummy-plugins
 
-> **Note:** This repository is a work in progress and is used internally for testing the PlotJuggler Marketplace infrastructure.
-
-Six dummy C++ extensions (shared libraries) for the PlotJuggler Marketplace POC, with a complete CI/CD pipeline using **conan 2.0** and GitHub Actions workflows for Ubuntu (x86_64 + aarch64), Windows (x64 + arm64), and macOS (x86_64 + arm64).
+Six dummy C++ extensions (shared libraries) for the PlotJuggler Marketplace POC, with a complete CI/CD pipeline using **pixi** + **conan 2.0** and GitHub Actions workflows for Ubuntu (x86_64 + aarch64), Windows (x64 + arm64), and macOS (x86_64 + arm64).
 
 This repository covers the **dummy extensions** deliverable of **Week 1** of the PlotJuggler Marketplace implementation plan (5–11 March 2026). See [ARCHITECTURE.md §7.2](../plotjuggler_core/pj_marketplace/documentation/ARCHITECTURE.md) and [PLAN.md §4](../plotjuggler_core/pj_marketplace/documentation/PLAN.md) for full context.
 
@@ -49,64 +47,91 @@ Each compiled shared library exposes two `extern "C"` functions:
 extern "C" PluginSystem::<Name>* create<Name>();
 
 // Metadata — returns a JSON string with extension info
-extern "C" const char* getMetadata();
+extern "C" const char* getPluginMetadata();
 ```
 
-> **Resolved:** function name is `getMetadata()` per PLAN.md §4 (Week 1). ARCHITECTURE.md §7.2 previously listed `getPluginMetadata()` — this has been aligned.
+> **Open question:** PLAN.md §4 (Week 1) names the function `getMetadata()`, while ARCHITECTURE.md §7.2 names it `getPluginMetadata()`. Currently implemented as `getPluginMetadata()` following the architecture. **Needs alignment.**
 
 ---
 
 ## ZIP artifact structure
 
-Releases are **per extension**. Each zip contains one subdirectory ready to be extracted into `~/.plotjuggler/extensions/` (see [ARCHITECTURE.md §5.1](../plotjuggler_core/pj_marketplace/documentation/ARCHITECTURE.md)):
+Each release zip contains one subdirectory per extension, ready to be extracted directly into `~/.plotjuggler/extensions/` (see [ARCHITECTURE.md §5.1](../plotjuggler_core/pj_marketplace/documentation/ARCHITECTURE.md)):
 
 ```
-csv-loader-1.0.0-linux-x86_64.zip
-└── csv-loader/
-    ├── csv-loader.so
-    └── manifest.json
+pj-test-dummy-plugins-1.0.0-linux-x86_64.zip
+├── csv-loader/
+│   ├── csv-loader.so
+│   └── manifest.json
+├── ros2-streaming/
+│   ├── ros2-streaming.so
+│   └── manifest.json
+└── ... (6 extensions total)
 ```
-
-Six zips are produced per release tag (one per platform/arch combination).
 
 ---
 
 ## Requirements
 
-- Python + pip
-- A C++ compiler: gcc/g++ on Linux, clang on macOS, MSVC on Windows
+- [pixi](https://pixi.sh) — manages the toolchain (cmake, ninja, conan, ccache, gcc/clang)
+- [Docker](https://docs.docker.com/get-docker/) — required for local CI testing with `act`
+- [act](https://github.com/nektos/act) *(optional)* — run GitHub Actions workflows locally
 
 ## Build locally
 
 ```bash
-pip install cmake "conan>=2.0,<3"
-conan profile detect --force
-conan install . --output-folder=build --build=missing -s build_type=Release
-cmake -S . -B build/Release -DCMAKE_TOOLCHAIN_FILE=build/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
-cmake --build build/Release --config Release
-ctest --test-dir build/Release -V --output-on-failure
+pixi run all      # conan install → cmake configure → build → ctest
+pixi run clean    # remove build/
 ```
+
+## Test CI locally with act
+
+```bash
+# Ubuntu x86_64
+act push -W .github/workflows/ubuntu.yml --matrix ubuntu-runner:ubuntu-22.04
+
+# Ubuntu aarch64 (requires QEMU)
+act push -W .github/workflows/ubuntu.yml --matrix ubuntu-runner:ubuntu-22.04-arm
+
+# Windows x64 (runs in a Linux container via act)
+act push -W .github/workflows/windows.yml --matrix arch:x64
+
+# macOS x86_64 (runs in a Linux container via act)
+act push -W .github/workflows/macos.yml --matrix arch:x86_64
+
+# Simulate a release tag (verifies artifact packaging)
+act push -W .github/workflows/ubuntu.yml \
+  --eventpath test-event-tag.json \
+  --matrix ubuntu-runner:ubuntu-22.04 \
+  --artifact-server-path /tmp/act-artifacts
+```
+
+> **Note:** Windows arm64 and macOS arm64 jobs require real GitHub-hosted runners and cannot be fully validated with `act` locally.
+
+> **Note:** The `Upload artifact` step will fail in act (no `ACTIONS_RUNTIME_TOKEN`). This is expected — the build and packaging steps succeed correctly. On real GitHub runners the full flow works.
 
 ---
 
 ## Release
 
-Releases are **per extension** following the mono-repo strategy in `plotjuggler-marketplace-spec-v1.0.0` §9. Push a tag with the format `<extension>/v<version>`:
+A GitHub Release is created automatically when a version tag is pushed:
 
 ```bash
-git tag csv-loader/v1.0.0
-git push origin csv-loader/v1.0.0
+git tag 1.0.0
+git push origin 1.0.0
 ```
 
-The unified workflow runs all 6 matrix jobs in parallel (linux x86_64, linux aarch64, macos x86_64, macos arm64, windows x64, windows arm64). Each builds the full project but packages **only the tagged extension**. The six resulting zips are attached to a single GitHub Release:
+All three workflows (ubuntu, macos, windows) run in parallel and each uploads its artifacts to the same release. The release is created by the ubuntu workflow (which also auto-generates release notes from commits since the previous tag). macOS and Windows attach their zips without modifying the description.
+
+The release includes these artifacts:
 
 ```
-csv-loader-1.0.0-linux-x86_64.zip
-csv-loader-1.0.0-linux-aarch64.zip
-csv-loader-1.0.0-macos-x86_64.zip
-csv-loader-1.0.0-macos-arm64.zip
-csv-loader-1.0.0-windows-x64.zip
-csv-loader-1.0.0-windows-arm64.zip
+pj-test-dummy-plugins-1.0.0-linux-x86_64.zip
+pj-test-dummy-plugins-1.0.0-linux-aarch64.zip
+pj-test-dummy-plugins-1.0.0-macos-x86_64.zip
+pj-test-dummy-plugins-1.0.0-macos-arm64.zip
+pj-test-dummy-plugins-1.0.0-windows-x64.zip
+pj-test-dummy-plugins-1.0.0-windows-arm64.zip
 ```
 
 ---
@@ -117,8 +142,17 @@ csv-loader-1.0.0-windows-arm64.zip
 pj-test-dummy-plugins/
 ├── CMakeLists.txt                   # root, includes all 6 extensions
 ├── conanfile.py                     # C++ dependency: gtest/1.14.0
+├── pixi.toml                        # toolchain + tasks (linux, windows, macos)
+├── pixi.lock                        # locked environment for linux platforms
+├── test-event-tag.json              # event file for simulating tag push with act
+├── .actrc                           # runner mapping for local act testing
+├── docker/
+│   ├── linux-x86_64/Dockerfile.build   # builds x86_64 inside Docker (GitLab CI)
+│   └── linux-aarch64/Dockerfile.build  # builds aarch64 via buildx + QEMU (GitLab CI)
 ├── .github/workflows/
-│   └── build.yml                    # unified matrix: 6 jobs (linux x86_64/aarch64, macos x86_64/arm64, windows x64/arm64)
+│   ├── ubuntu.yml                   # matrix: ubuntu-22.04 (x86_64) + ubuntu-22.04-arm (aarch64)
+│   ├── windows.yml                  # matrix: windows-latest (x64) + windows-11-arm (arm64)
+│   └── macos.yml                    # matrix: macos-13 (x86_64) + macos-14 (arm64)
 └── extensions/
     ├── csv-loader/                  # CsvLoader extension + GTest suite
     ├── ros2-streaming/              # Ros2Streaming extension + GTest suite

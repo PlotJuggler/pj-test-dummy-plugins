@@ -2,7 +2,7 @@
   "id": "csv-loader",
   "name": "CSV Loader",
   "description": "Loads CSV files and exposes column names",
-  "version": "1.0.8",
+  "version": "1.0.0",
   "category": "data_loader",
   "min_plotjuggler_version": "4.0.0"
 }
