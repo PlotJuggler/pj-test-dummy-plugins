@@ -4,6 +4,11 @@ project(plotjuggler-plugins VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# On Windows/MSVC, shared libraries need __declspec(dllexport) to generate an
+# import library (.lib). Since plugins use Linux-style exports, enable auto-export
+# so MSVC produces the .lib needed by test executables.
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
 find_package(GTest REQUIRED)
 include(GoogleTest)
 include(CTest)
