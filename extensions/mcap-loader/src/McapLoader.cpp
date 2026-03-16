@@ -5,7 +5,7 @@ namespace PluginSystem {
 McapLoader::McapLoader() {}
 McapLoader::~McapLoader() {}
 std::string McapLoader::getName() const { return "MCAP Loader"; }
-std::string McapLoader::getVersion() const { return "1.0.0"; }
+std::string McapLoader::getVersion() const { return "1.0.9"; }
 
 bool McapLoader::open(const std::string& filepath) {
     if (filepath.empty()) return false;
