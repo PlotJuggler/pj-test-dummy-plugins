@@ -5,7 +5,7 @@ namespace PluginSystem {
 FftToolbox::FftToolbox() {}
 FftToolbox::~FftToolbox() {}
 std::string FftToolbox::getName() const { return "FFT Toolbox"; }
-std::string FftToolbox::getVersion() const { return "1.0.0"; }
+std::string FftToolbox::getVersion() const { return "1.0.9"; }
 
 std::vector<double> FftToolbox::compute(const std::vector<double>& samples) {
     if (samples.empty()) return {};
