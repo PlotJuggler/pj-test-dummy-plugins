@@ -9,6 +9,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # so MSVC produces the .lib needed by test executables.
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
+# On Windows, DLLs and test executables must be in the same directory so the
+# runtime loader can find them. Centralise all runtime outputs.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 find_package(GTest REQUIRED)
 include(GoogleTest)
 include(CTest)
