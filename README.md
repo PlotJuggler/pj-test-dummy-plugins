@@ -91,9 +91,24 @@ ctest --test-dir build/Release -V --output-on-failure
 
 ## Release
 
-Releases are **per extension** following the mono-repo strategy in `plotjuggler-marketplace-spec-v1.0.0` §9. Push a tag with the format `<extension>/v<version>`:
+Releases are **per extension** following the mono-repo strategy in `plotjuggler-marketplace-spec-v1.0.0` §9.
+
+### Bumping version
+
+When releasing a new version, update the version string in **4 places**:
+
+1. `extensions/<name>/manifest.json` — the `"version"` field
+2. `extensions/<name>/src/PluginEntry.cpp` — the `"version"` in `getMetadata()`
+3. `extensions/<name>/src/<Name>.cpp` — the `getVersion()` return value
+4. `extensions/<name>/test/test_<name>.cpp` — the version assertion in `GetVersion` test
+
+### Creating a release tag
+
+After merging the version bump to `development`, create and push the tag:
 
 ```bash
+git checkout development
+git pull origin development
 git tag csv-loader/v1.0.0
 git push origin csv-loader/v1.0.0
 ```
