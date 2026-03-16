@@ -55,6 +55,8 @@ jobs:
       - name: Set up MSVC environment (Windows)
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
 
       - name: Cache conan packages (Linux/macOS)
         if: runner.os != 'Windows'
