@@ -5,7 +5,7 @@ namespace PluginSystem {
 CsvLoader::CsvLoader() {}
 CsvLoader::~CsvLoader() {}
 std::string CsvLoader::getName() const { return "CSV Loader"; }
-std::string CsvLoader::getVersion() const { return "1.0.0"; }
+std::string CsvLoader::getVersion() const { return "1.0.9"; }
 
 bool CsvLoader::load(const std::string& filepath) {
     if (filepath.empty()) return false;
